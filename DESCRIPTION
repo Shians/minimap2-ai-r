@@ -1,0 +1,13 @@
+Package: minimap2
+Title: R Interface to Minimap2
+Version: 0.1.0
+Authors@R: 
+    person("Your", "Name", email = "your.email@example.com", role = c("aut", "cre"))
+Description: R interface to Minimap2, a versatile sequence alignment program that can be used for short-read alignment, long-read alignment, and short-read assembly-to-reference alignment.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+LinkingTo: Rcpp
+Imports: Rcpp
+SystemRequirements: C++11 
