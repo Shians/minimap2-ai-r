@@ -11,7 +11,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // align_sequences_cpp
-List align_sequences_cpp(const std::string& reference_file, const std::vector<std::string>& query_seqs, const std::vector<std::string>& query_names, const std::vector<std::string>& query_quals, const std::string& preset, int n_threads);
+std::vector<std::string> align_sequences_cpp(const std::string& reference_file, const std::vector<std::string>& query_seqs, const std::vector<std::string>& query_names, const std::vector<std::string>& query_quals, const std::string& preset, int n_threads);
 RcppExport SEXP _minimap2_align_sequences_cpp(SEXP reference_fileSEXP, SEXP query_seqsSEXP, SEXP query_namesSEXP, SEXP query_qualsSEXP, SEXP presetSEXP, SEXP n_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;

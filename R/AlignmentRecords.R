@@ -112,10 +112,7 @@ AlignmentRecords <- function(header = character(), records = tibble::tibble(
     tlen = integer(),
     seq = character(),
     qual = character(),
-    NM = integer(),
-    ms = integer(),
-    AS = integer(),
-    nn = integer()
+    tags = character()
 )) {
     methods::new("AlignmentRecords",
         header = header,
@@ -133,15 +130,15 @@ sam_to_records <- function(sam_lines) {
     # Split into header and alignment lines
     header_lines <- sam_lines[stringr::str_detect(sam_lines, "^@")]
     aln_lines <- sam_lines[!stringr::str_detect(sam_lines, "^@")]
-    
+
     if (length(aln_lines) == 0) {
         return(AlignmentRecords(header = header_lines))
     }
-    
+
     # Parse alignment lines
-    fields <- stringr::str_split_fixed(aln_lines, "\t", 15)
-    
-    # Create records tibble
+    fields <- stringr::str_split_fixed(aln_lines, "\t", 12)  # Changed to 12 columns
+
+    # Create records tibble with mandatory fields
     records <- tibble::tibble(
         qname = fields[,1],
         flag = as.integer(fields[,2]),
@@ -153,25 +150,9 @@ sam_to_records <- function(sam_lines) {
         pnext = as.integer(fields[,8]),
         tlen = as.integer(fields[,9]),
         seq = fields[,10],
-        qual = fields[,11]
+        qual = fields[,11],
+        tags = fields[,12]
     )
-    
-    # Parse optional fields
-    if (ncol(fields) > 11) {
-        tags <- fields[,12:ncol(fields)]
-        tags <- tags[tags != ""]  # Remove empty fields
-        
-        # Parse common tags
-        for (tag in c("NM", "ms", "AS", "nn")) {
-            tag_pattern <- paste0(tag, ":i:")
-            tag_values <- rep(NA_integer_, nrow(records))
-            tag_matches <- stringr::str_detect(tags, paste0("^", tag_pattern))
-            if (any(tag_matches)) {
-                tag_values[tag_matches] <- as.integer(sub(tag_pattern, "", tags[tag_matches]))
-                records[[tag]] <- tag_values
-            }
-        }
-    }
-    
+
     AlignmentRecords(header = header_lines, records = records)
-} 
+}

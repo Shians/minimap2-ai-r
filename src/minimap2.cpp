@@ -14,8 +14,40 @@ extern "C" {
 
 using namespace Rcpp;
 
+// Helper function to calculate SAM flags
+uint16_t calculate_sam_flag(const mm_reg1_t* r) {
+    uint16_t flag = 0;
+    
+    // 0x1   PAIRED        // not used in single-end alignment
+    // 0x2   PROPER_PAIR   // set if proper_frag is true
+    if (r->proper_frag) flag |= 0x2;
+    
+    // 0x4   UNMAP        // never set here as this is for mapped reads
+    // 0x8   MUNMAP       // not used in single-end alignment
+    
+    // 0x10  REVERSE      // set if rev is true
+    if (r->rev) flag |= 0x10;
+    
+    // 0x20  MREVERSE     // not used in single-end alignment
+    
+    // 0x40  READ1        // not used in single-end alignment
+    // 0x80  READ2        // not used in single-end alignment
+    
+    // 0x100 SECONDARY    // set if not primary (parent != id)
+    if (r->parent != r->id) flag |= 0x100;
+    
+    // 0x200 QCFAIL       // not used
+    
+    // 0x400 DUP          // not used
+    
+    // 0x800 SUPPLEMENTARY // set if not primary and split_inv is true
+    if (r->parent != r->id && r->split_inv) flag |= 0x800;
+    
+    return flag;
+}
+
 // [[Rcpp::export]]
-List align_sequences_cpp(
+std::vector<std::string> align_sequences_cpp(
     const std::string& reference_file,
     const std::vector<std::string>& query_seqs,
     const std::vector<std::string>& query_names,
@@ -55,7 +87,7 @@ List align_sequences_cpp(
         stop("Invalid preset option");
     }
 
-    map_opt.flag |= MM_F_CIGAR;
+    map_opt.flag |= MM_F_OUT_SAM | MM_F_CIGAR;
 
     // Log indexing options
     Rcerr << "[minimap2] Index options:\n"
@@ -130,7 +162,7 @@ List align_sequences_cpp(
     // Store SAM output
     std::vector<std::string> sam_lines;
     
-    // Store header lines
+    // Add header lines
     sam_lines.push_back("@HD\tVN:1.6\tSO:unknown");
     for (int i = 0; i < (int)mi->n_seq; ++i) {
         sam_lines.push_back("@SQ\tSN:" + std::string(mi->seq[i].name) + 
@@ -138,7 +170,7 @@ List align_sequences_cpp(
     }
     sam_lines.push_back("@PG\tID:minimap2\tPN:minimap2\tVN:2.24\tCL:minimap2");
     
-    // Process sequences
+    // Process each sequence
     for (size_t seq_idx = 0; seq_idx < n_seqs; ++seq_idx) {
         const std::string& query_seq = query_seqs[seq_idx];
         std::string query_name = query_names[seq_idx];
@@ -155,7 +187,7 @@ List align_sequences_cpp(
         
         if (seq_idx > 0 && seq_idx % 1000 == 0) {
             Rcerr << "[minimap2] Processed " << seq_idx << " sequences\n";
-            Rcpp::checkUserInterrupt();  // Allow user interruption
+            Rcpp::checkUserInterrupt();
         }
         
         // Perform alignment
@@ -168,13 +200,14 @@ List align_sequences_cpp(
                                 &map_opt,
                                 query_name.c_str());
         
-        // Store alignment records
         if (n_regs == 0) {
+            // Store unmapped read
             std::stringstream ss;
             ss << query_name << "\t4\t*\t0\t0\t*\t*\t0\t0\t"
                << query_seq << "\t" << query_qual;
             sam_lines.push_back(ss.str());
         } else {
+            // Store mapped reads
             for (int i = 0; i < n_regs; ++i) {
                 mm_reg1_t *r = &regs[i];
                 
@@ -185,16 +218,14 @@ List align_sequences_cpp(
                     int n_cigar = r->p->n_cigar;
                     for (int j = 0; j < n_cigar; ++j) {
                         cigar += std::to_string(cigar_array[j] >> 4) + 
-                                "MIDNSHP=XB"[cigar_array[j] & 0xf];
+                                MM_CIGAR_STR[cigar_array[j] & 0xf];
                     }
                 }
                 
                 // Calculate flag
-                int flag = 0;
-                if (r->rev) flag |= 0x10;
-                if (n_regs > 1) flag |= 0x100;
+                uint16_t flag = calculate_sam_flag(r);
                 
-                // Print alignment
+                // Format alignment record
                 std::stringstream ss;
                 ss << query_name << "\t"
                    << flag << "\t"
@@ -222,6 +253,5 @@ List align_sequences_cpp(
     mm_tbuf_destroy(tbuf);
     mm_idx_destroy(mi);
     
-    // Convert to R
-    return wrap(sam_lines);
+    return sam_lines;
 }
