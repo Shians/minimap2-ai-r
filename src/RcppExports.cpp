@@ -10,6 +10,19 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// build_index_cpp
+SEXP build_index_cpp(const std::string& reference_file, const std::string& preset, int n_threads);
+RcppExport SEXP _minimap2_build_index_cpp(SEXP reference_fileSEXP, SEXP presetSEXP, SEXP n_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type reference_file(reference_fileSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type preset(presetSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(build_index_cpp(reference_file, preset, n_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // align_sequences_cpp
 std::vector<std::string> align_sequences_cpp(const std::string& reference_file, const std::vector<std::string>& query_seqs, const std::vector<std::string>& query_names, const std::vector<std::string>& query_quals, const std::string& preset, int n_threads);
 RcppExport SEXP _minimap2_align_sequences_cpp(SEXP reference_fileSEXP, SEXP query_seqsSEXP, SEXP query_namesSEXP, SEXP query_qualsSEXP, SEXP presetSEXP, SEXP n_threadsSEXP) {
@@ -26,9 +39,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// aligner_map_cpp
+std::vector<std::string> aligner_map_cpp(SEXP mi_ptr, const std::vector<std::string>& query_seqs, const std::vector<std::string>& query_names, const std::vector<std::string>& query_quals);
+RcppExport SEXP _minimap2_aligner_map_cpp(SEXP mi_ptrSEXP, SEXP query_seqsSEXP, SEXP query_namesSEXP, SEXP query_qualsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type mi_ptr(mi_ptrSEXP);
+    Rcpp::traits::input_parameter< const std::vector<std::string>& >::type query_seqs(query_seqsSEXP);
+    Rcpp::traits::input_parameter< const std::vector<std::string>& >::type query_names(query_namesSEXP);
+    Rcpp::traits::input_parameter< const std::vector<std::string>& >::type query_quals(query_qualsSEXP);
+    rcpp_result_gen = Rcpp::wrap(aligner_map_cpp(mi_ptr, query_seqs, query_names, query_quals));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_minimap2_build_index_cpp", (DL_FUNC) &_minimap2_build_index_cpp, 3},
     {"_minimap2_align_sequences_cpp", (DL_FUNC) &_minimap2_align_sequences_cpp, 6},
+    {"_minimap2_aligner_map_cpp", (DL_FUNC) &_minimap2_aligner_map_cpp, 4},
     {NULL, NULL, 0}
 };
 

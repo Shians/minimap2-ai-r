@@ -2,6 +2,8 @@
 
 export(AlignmentRecords)
 export(align_sequences)
+export(aligner_map)
+export(build_index)
 export(header)
 export(n_mapped)
 export(n_records)
