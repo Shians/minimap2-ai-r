@@ -31,6 +31,9 @@ reads_df <- tibble(
 )
 
 genome_path <- tempfile()
+
+# Might need more time to download genome
+options(timeout = max(600, getOption("timeout")))
 download.file(
     url = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/GRCh38.primary_assembly.genome.fa.gz",
     destfile = genome_path
