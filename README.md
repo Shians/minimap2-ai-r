@@ -7,8 +7,8 @@ This is a NON-FUNCTIONAL EXPERIMENTAL PACKAGE created using AI to implement an R
 To install the package, you'll need to have R and Rcpp installed. You can install the package using:
 
 ```R
-install.packages("devtools")
-devtools::install_github("shians/minimap2-ai-r")
+install.packages("remotes")
+remotes::install_github("shians/minimap2-ai-r")
 ```
 
 ## Usage
