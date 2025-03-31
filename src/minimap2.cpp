@@ -95,6 +95,26 @@ std::string generate_cigar(const mm_reg1_t *r, int query_length, const mm_mapopt
     return cigar.empty() ? "*" : cigar;
 }
 
+// Add this helper function near the top of the file
+std::string reverse_complement(const std::string& seq) {
+    std::string rc(seq.length(), 'N');
+    for (size_t i = 0; i < seq.length(); ++i) {
+        char base = seq[seq.length() - 1 - i];
+        switch (base) {
+            case 'A': rc[i] = 'T'; break;
+            case 'T': rc[i] = 'A'; break;
+            case 'G': rc[i] = 'C'; break;
+            case 'C': rc[i] = 'G'; break;
+            case 'a': rc[i] = 't'; break;
+            case 't': rc[i] = 'a'; break;
+            case 'g': rc[i] = 'c'; break;
+            case 'c': rc[i] = 'g'; break;
+            default: rc[i] = base;
+        }
+    }
+    return rc;
+}
+
 // [[Rcpp::export]]
 std::vector<std::string> align_sequences_cpp(
     const std::string& reference_file,
@@ -275,6 +295,14 @@ std::vector<std::string> align_sequences_cpp(
                     output_seq = query_seq.substr(r->qs, r->qe - r->qs);
                     if (!query_qual.empty()) {
                         output_qual = query_qual.substr(r->qs, r->qe - r->qs);
+                    }
+                }
+
+                // Reverse complement sequence and reverse quality string if reverse strand
+                if (r->rev) {
+                    output_seq = reverse_complement(output_seq);
+                    if (!output_qual.empty()) {
+                        std::reverse(output_qual.begin(), output_qual.end());
                     }
                 }
 
