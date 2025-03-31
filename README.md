@@ -13,7 +13,7 @@ devtools::install_github("shians/minimap2-ai-r")
 
 ## Usage
 
-Here's a basic example of how to use the package:
+Here's a basic example of how to use the package (THIS IS CURRENTLY BROKEN AND WILL ALWAYS RETURN 0 ALIGNMENTS):
 
 ```R
 library(minimap2)
