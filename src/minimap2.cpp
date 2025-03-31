@@ -17,6 +17,12 @@ using namespace Rcpp;
 // Helper function to calculate SAM flags
 uint16_t calculate_sam_flag(const mm_reg1_t* r) {
     uint16_t flag = 0;
+
+    Rcerr << "Generating CIGAR for alignment " << r->id << "\n";
+    Rcerr << "parent: " << r->parent << ", id: " << r->id << "\n";
+    Rcerr << "split: " << r->split << ", split_inv: " << r->split_inv << "\n";
+    Rcerr << "sam_pri: " << r->sam_pri << "\n";
+    Rcerr << "split_inv: " << r->split_inv << "\n";
     
     // 0x1   PAIRED        // not used in single-end alignment
     // 0x2   PROPER_PAIR   // set if proper_frag is true
@@ -34,16 +40,59 @@ uint16_t calculate_sam_flag(const mm_reg1_t* r) {
     // 0x80  READ2        // not used in single-end alignment
     
     // 0x100 SECONDARY    // set if not primary (parent != id)
-    if (r->parent != r->id) flag |= 0x100;
+    if (!r->sam_pri) flag |= 0x100;
     
     // 0x200 QCFAIL       // not used
     
     // 0x400 DUP          // not used
     
-    // 0x800 SUPPLEMENTARY // set if not primary and split_inv is true
-    if (r->parent != r->id && r->split_inv) flag |= 0x800;
+    // 0x800 SUPPLEMENTARY // set if not primary and parent == id
+    if (!r->sam_pri && (r->parent == r->id)) flag |= 0x800;
     
     return flag;
+}
+
+std::string generate_cigar(const mm_reg1_t *r, int query_length, const mm_mapopt_t &map_opt) {
+    std::string cigar;
+    
+    // Determine clipping character based on flags
+    char clip_char = 'S';  // default to soft clipping
+    if (((!r->sam_pri) || (r->parent != r->id && (map_opt.flag & MM_F_SECONDARY_SEQ))) && 
+        !(map_opt.flag & MM_F_SOFTCLIP)) {
+        clip_char = 'H';
+    }
+    
+    // Calculate clipping lengths based on strand orientation
+    int start_clip, end_clip;
+    if (r->rev) { // reverse strand
+        start_clip = query_length - r->qe;
+        end_clip = r->qs;
+    } else { // forward strand
+        start_clip = r->qs;
+        end_clip = query_length - r->qe;
+    }
+
+    // Add clip at start if needed
+    if (start_clip > 0) {
+        cigar += std::to_string(start_clip) + clip_char;
+    }
+    
+    // Add main alignment CIGAR
+    if (r->p) {
+        uint32_t *cigar_array = r->p->cigar;
+        int n_cigar = r->p->n_cigar;
+        for (int j = 0; j < n_cigar; ++j) {
+            cigar += std::to_string(cigar_array[j] >> 4) + 
+                    "MIDNSHP=XB"[cigar_array[j] & 0xf];
+        }
+    }
+    
+    // Add clip at end if needed
+    if (end_clip > 0) {
+        cigar += std::to_string(end_clip) + clip_char;
+    }
+    
+    return cigar.empty() ? "*" : cigar;
 }
 
 // [[Rcpp::export]]
@@ -87,7 +136,10 @@ std::vector<std::string> align_sequences_cpp(
         stop("Invalid preset option");
     }
 
-    map_opt.flag |= MM_F_OUT_SAM | MM_F_CIGAR;
+    map_opt.flag |= 
+        MM_F_OUT_SAM |
+        MM_F_CIGAR |
+        MM_F_SECONDARY_SEQ;
 
     // Log indexing options
     Rcerr << "[minimap2] Index options:\n"
@@ -211,18 +263,23 @@ std::vector<std::string> align_sequences_cpp(
             for (int i = 0; i < n_regs; ++i) {
                 mm_reg1_t *r = &regs[i];
                 
-                // Get CIGAR string
-                std::string cigar;
-                if (r->p) {
-                    uint32_t *cigar_array = r->p->cigar;
-                    int n_cigar = r->p->n_cigar;
-                    for (int j = 0; j < n_cigar; ++j) {
-                        cigar += std::to_string(cigar_array[j] >> 4) + 
-                                MM_CIGAR_STR[cigar_array[j] & 0xf];
+                // Get CIGAR string and determine if hard clipping is used
+                std::string cigar = generate_cigar(r, query_seq.length(), map_opt);
+                bool is_hard_clipped = ((!r->sam_pri) || (r->parent != r->id && (map_opt.flag & MM_F_SECONDARY_SEQ))) && 
+                                     !(map_opt.flag & MM_F_SOFTCLIP);
+
+                // Trim sequence and quality if hard clipping is used
+                std::string output_seq = query_seq;
+                std::string output_qual = query_qual;
+                if (is_hard_clipped && r->qe > r->qs) {
+                    output_seq = query_seq.substr(r->qs, r->qe - r->qs);
+                    if (!query_qual.empty()) {
+                        output_qual = query_qual.substr(r->qs, r->qe - r->qs);
                     }
                 }
-                
+
                 // Calculate flag
+                Rcerr << "Calculating flag for alignment " << query_name << "\n";
                 uint16_t flag = calculate_sam_flag(r);
                 
                 // Format alignment record
@@ -232,10 +289,10 @@ std::vector<std::string> align_sequences_cpp(
                    << mi->seq[r->rid].name << "\t"
                    << r->rs + 1 << "\t"
                    << r->mapq << "\t"
-                   << (cigar.empty() ? "*" : cigar) << "\t"
+                   << cigar << "\t"
                    << "*\t0\t0\t"
-                   << query_seq << "\t"
-                   << query_qual << "\t"
+                   << output_seq << "\t"  // Use trimmed sequence
+                   << output_qual << "\t"  // Use trimmed quality
                    << "NM:i:" << r->blen - r->mlen << "\t"
                    << "ms:i:" << r->score << "\t"
                    << "AS:i:" << r->score << "\t"
