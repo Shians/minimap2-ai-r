@@ -34,7 +34,7 @@ uint16_t calculate_sam_flag(const mm_reg1_t* r) {
     // 0x80  READ2        // not used in single-end alignment
     
     // 0x100 SECONDARY    // set if not primary (parent != id)
-    if (!r->sam_pri) flag |= 0x100;
+    if (!r->sam_pri && (r->parent != r->id)) flag |= 0x100;
     
     // 0x200 QCFAIL       // not used
     
@@ -174,9 +174,6 @@ std::vector<std::string> align_sequences_cpp(
              ") does not match number of sequences (" + std::to_string(n_seqs) + ")");
     }
     
-    Rcerr << "[minimap2] Initializing alignment with preset: " << preset << "\n";
-    Rcerr << "[minimap2] Processing " << n_seqs << " sequences\n";
-    
     // Initialize index options and mapping options
     mm_idxopt_t idx_opt;
     mm_mapopt_t map_opt;
@@ -191,32 +188,6 @@ std::vector<std::string> align_sequences_cpp(
     }
 
     map_opt.flag |= MM_F_CIGAR;
-
-    // Log indexing options
-    Rcerr << "[minimap2] Index options:\n"
-          << "  k-mer size (k): " << idx_opt.k << "\n"
-          << "  window size (w): " << idx_opt.w << "\n"
-          << "  bucket bits: " << idx_opt.bucket_bits << "\n"
-          << "  mini batch size: " << idx_opt.mini_batch_size << "\n"
-          << "  flag: " << std::hex << idx_opt.flag 
-          << (idx_opt.flag & MM_I_HPC ? " (homopolymer-compressed)" : "")
-          << (idx_opt.flag & MM_I_NO_SEQ ? " (no-seq)" : "")
-          << (idx_opt.flag & MM_I_NO_NAME ? " (no-name)" : "")
-          << std::dec << "\n";
-
-    // Log mapping options
-    Rcerr << "[minimap2] Mapping options:\n"
-          << "  scoring: match=" << map_opt.a 
-          << " mismatch=" << map_opt.b
-          << " gap-open(Q)=" << map_opt.q 
-          << " gap-extend(E)=" << map_opt.e << "\n"
-          << "  min chain score: " << map_opt.min_chain_score << "\n"
-          << "  min number of minimizers: " << map_opt.min_cnt << "\n"
-          << "  bandwidth (dp): " << map_opt.bw << "\n"
-          << "  bandwidth (long gaps): " << map_opt.bw_long << "\n"
-          << "  max gap (ref): " << map_opt.max_gap_ref << "\n"
-          << "  max gap (query): " << map_opt.max_gap << "\n"
-          << "  flags: " << std::hex << map_opt.flag;
 
     // Print relevant mapping flags
     if (map_opt.flag & MM_F_CIGAR) Rcerr << " (cigar)";
@@ -235,8 +206,6 @@ std::vector<std::string> align_sequences_cpp(
     if (map_opt.max_qlen)
         Rcerr << "  max query length: " << map_opt.max_qlen << "\n";
     
-    Rcerr << "[minimap2] Opening reference file: " << reference_file << "\n";
-    
     // Open index reader
     mm_idx_reader_t *reader = mm_idx_reader_open(reference_file.c_str(), &idx_opt, 0);
     if (!reader) {
@@ -251,9 +220,6 @@ std::vector<std::string> align_sequences_cpp(
         stop("Failed to read index");
     }
     mm_idx_reader_close(reader);
-    
-    Rcerr << "[minimap2] Index loaded: " << mi->n_seq << " sequences, k=" << idx_opt.k 
-          << ", w=" << idx_opt.w << "\n";
     
     // Initialize thread buffer
     mm_tbuf_t *tbuf = mm_tbuf_init();
@@ -338,7 +304,6 @@ std::vector<std::string> align_sequences_cpp(
                 }
 
                 // Calculate flag
-                Rcerr << "Calculating flag for alignment " << query_name << "\n";
                 uint16_t flag = calculate_sam_flag(r);
                 
                 // Format alignment record
