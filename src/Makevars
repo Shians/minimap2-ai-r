@@ -2,10 +2,11 @@ PKG_CPPFLAGS = -I./minimap2
 PKG_LIBS = ./minimap2/libminimap2.a
 
 UNAME_M := $(shell uname -m)
+PWD := $(shell pwd)
 
 .PHONY: all minimap2/libminimap2.a
 
-all: $(SHLIB)
+all: $(SHLIB) ../inst/bin/minimap2
 $(SHLIB): minimap2/libminimap2.a
 
 minimap2/libminimap2.a:
@@ -19,6 +20,21 @@ else
 	@echo "Building for x86_64"
 	(cd minimap2 && $(MAKE) -f Makefile libminimap2.a)
 endif
+
+../inst/bin/minimap2:
+ifeq ($(UNAME_M),arm64)
+	@echo "Building for ARM64"
+	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 minimap2)
+else ifeq ($(UNAME_M),aarch64)
+	@echo "Building for ARM64"
+	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 minimap2)
+else
+	@echo "Building for x86_64"
+	(cd minimap2 && $(MAKE) -f Makefile minimap2)
+endif
+	echo "Installing binary to $(PWD)/../inst/bin"
+	mkdir -p ../inst/bin
+	cp minimap2/minimap2 ../inst/bin/
 
 clean:
 	(cd minimap2 && $(MAKE) clean)
