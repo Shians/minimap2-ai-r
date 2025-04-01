@@ -13,3 +13,7 @@ aligner_map_cpp <- function(mi_ptr, query_seqs, query_names, query_quals) {
     .Call(`_minimap2_aligner_map_cpp`, mi_ptr, query_seqs, query_names, query_quals)
 }
 
+calculate_effective_seq_size_cpp <- function(cigar) {
+    .Call(`_minimap2_calculate_effective_seq_size_cpp`, cigar)
+}
+

@@ -486,3 +486,44 @@ std::vector<std::string> aligner_map_cpp(
     
     return sam_lines;
 }
+
+// [[Rcpp::export]]
+int calculate_effective_seq_size_cpp(const std::string& cigar) {
+    if (cigar == "*") return 0;
+    
+    int length = 0;
+    int current_num = 0;
+    
+    // Iterate through each character in the CIGAR string
+    for (char c : cigar) {
+        if (std::isdigit(c)) {
+            // Build up the number
+            current_num = current_num * 10 + (c - '0');
+        } else {
+            // Process CIGAR operation
+            switch (c) {
+                // Operations that consume query sequence
+                case 'M': // alignment match
+                case 'I': // insertion to reference
+                case 'S': // soft clipping
+                case '=': // sequence match
+                case 'X': // sequence mismatch
+                    length += current_num;
+                    break;
+                    
+                // Operations that don't consume query sequence
+                case 'D': // deletion from reference
+                case 'N': // skipped region from reference
+                case 'H': // hard clipping
+                case 'P': // padding
+                    break;
+                    
+                default:
+                    Rcpp::warning("Unknown CIGAR operation: %c", c);
+            }
+            current_num = 0;
+        }
+    }
+    
+    return length;
+}

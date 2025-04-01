@@ -53,11 +53,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// calculate_effective_seq_size_cpp
+int calculate_effective_seq_size_cpp(const std::string& cigar);
+RcppExport SEXP _minimap2_calculate_effective_seq_size_cpp(SEXP cigarSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type cigar(cigarSEXP);
+    rcpp_result_gen = Rcpp::wrap(calculate_effective_seq_size_cpp(cigar));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_minimap2_build_index_cpp", (DL_FUNC) &_minimap2_build_index_cpp, 3},
     {"_minimap2_align_sequences_cpp", (DL_FUNC) &_minimap2_align_sequences_cpp, 6},
     {"_minimap2_aligner_map_cpp", (DL_FUNC) &_minimap2_aligner_map_cpp, 4},
+    {"_minimap2_calculate_effective_seq_size_cpp", (DL_FUNC) &_minimap2_calculate_effective_seq_size_cpp, 1},
     {NULL, NULL, 0}
 };
 
