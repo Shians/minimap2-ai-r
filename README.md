@@ -13,7 +13,13 @@ remotes::install_github("shians/minimap2-ai-r")
 
 ## Usage
 
-Here's a basic example of how to use the package, provide your own human reference genome if you have one:
+A binary of minimap2 is now available at
+
+```
+system.file("bin/minimap2", package = "minimap2", mustWork = TRUE)
+```
+
+Here's a basic example of how to use the R interface of the package, provide your own human reference genome if you have one:
 
 ```R
 library(minimap2)
