@@ -1,6 +1,6 @@
 Package: minimap2
 Title: R Interface to Minimap2
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: 
     person("Shian", "Su", email = "su.s@wehi.edu.au", role = c("aut", "cre"))
 Description: R interface to Minimap2, a versatile sequence alignment program that can be used for short-read alignment, long-read alignment, and short-read assembly-to-reference alignment.
