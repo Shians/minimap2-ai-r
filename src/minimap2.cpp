@@ -324,10 +324,11 @@ std::vector<std::string> align_sequences_cpp(
                 sam_lines.push_back(ss.str());
             }
         }
-        
+
+        for (int i = 0; i < n_regs; ++i) free(regs[i].p);
         free(regs);
     }
-    
+
     Rcerr << "[minimap2] Completed processing " << n_seqs << " sequences\n";
     
     // Cleanup
@@ -477,13 +478,14 @@ std::vector<std::string> aligner_map_cpp(
                 sam_lines.push_back(ss.str());
             }
         }
-        
+
+        for (int i = 0; i < n_regs; ++i) free(regs[i].p);
         free(regs);
     }
-    
+
     // Cleanup
     mm_tbuf_destroy(tbuf);
-    
+
     return sam_lines;
 }
 
