@@ -1,0 +1,123 @@
+name: Sync minimap2 release
+
+on:
+  schedule:
+    - cron: '17 3 * * *' # daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-minimap2
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_tag: ${{ steps.check.outputs.latest_tag }}
+      needs_sync: ${{ steps.check.outputs.needs_sync }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare latest minimap2 release to vendored version
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest_tag=$(gh api repos/lh3/minimap2/releases/latest --jq .tag_name)
+          current_tag=$(cat .minimap2-version 2>/dev/null || echo "")
+          echo "Latest upstream release: $latest_tag"
+          echo "Currently vendored:      $current_tag"
+          echo "latest_tag=$latest_tag" >> "$GITHUB_OUTPUT"
+          if [ "$latest_tag" != "$current_tag" ]; then
+            echo "needs_sync=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_sync=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  verify:
+    needs: check
+    if: needs.check.outputs.needs_sync == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync vendored minimap2 source
+        run: .github/scripts/sync-minimap2.sh "${{ needs.check.outputs.latest_tag }}"
+
+      - uses: r-lib/actions/setup-r@v2
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::pkgbuild, any::pkgload
+
+      - name: Build and smoke-test
+        run: Rscript .github/scripts/smoke-test.R
+
+  publish:
+    needs: [check, verify]
+    if: needs.check.outputs.needs_sync == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync vendored minimap2 source
+        run: .github/scripts/sync-minimap2.sh "${{ needs.check.outputs.latest_tag }}"
+
+      - name: Commit, tag, and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ needs.check.outputs.latest_tag }}"
+          version="${tag#v}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Sync vendored minimap2 source to ${tag}"
+          git tag "v${version}"
+          git push origin HEAD:main
+          git push origin "v${version}"
+
+          gh release create "v${version}" \
+            --title "minimap2 ${tag}" \
+            --notes "Vendored minimap2 source synced to upstream release [${tag}](https://github.com/lh3/minimap2/releases/tag/${tag})."
+
+  open-fix-pr:
+    needs: [check, verify]
+    if: always() && needs.check.outputs.needs_sync == 'true' && needs.verify.result == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync vendored minimap2 source
+        run: .github/scripts/sync-minimap2.sh "${{ needs.check.outputs.latest_tag }}"
+
+      - name: Open PR for manual fix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ needs.check.outputs.latest_tag }}"
+          branch="sync/minimap2-${tag}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A
+          git commit -m "Sync vendored minimap2 source to ${tag} (build failing, needs manual fix)"
+          git push origin "$branch" --force
+
+          if ! gh pr view "$branch" >/dev/null 2>&1; then
+            gh pr create --title "minimap2 ${tag} sync: package fails to build" \
+              --body "Automatic sync to minimap2 ${tag} failed the build/smoke-test step (see the failed \`verify\` job on this workflow run for details). The upstream C API likely changed — update \`src/minimap2.cpp\` to match before merging." \
+              --base main --head "$branch"
+          fi

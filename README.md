@@ -2,6 +2,15 @@
 
 This is a NON-FUNCTIONAL EXPERIMENTAL PACKAGE created using AI to implement an R interface to minimap2.
 
+## Vendored minimap2 source
+
+`src/minimap2/` tracks upstream [lh3/minimap2](https://github.com/lh3/minimap2) releases automatically: a
+[scheduled workflow](.github/workflows/sync-minimap2.yml) checks daily for a new minimap2 release, syncs
+the vendored source, and verifies the package still builds. If it does, the package's `Version` is set to
+match the minimap2 release (e.g. minimap2 `v2.31` -> package version `2.31`) and a matching GitHub release
+is cut automatically. If the sync breaks the build (an upstream C API change), a PR is opened instead for
+manual fixing. The currently-vendored release is tracked in [`.minimap2-version`](.minimap2-version).
+
 ## Installation
 
 To install the package, you'll need to have R and Rcpp installed. You can install the package using:
