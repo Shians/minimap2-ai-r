@@ -89,6 +89,18 @@ std::string generate_cigar(const mm_reg1_t *r, int query_length, const mm_mapopt
     return cigar.empty() ? "*" : cigar;
 }
 
+// Build the NM/ms/AS/nn optional SAM tags, matching minimap2's own
+// format.c (dp_max0/dp_score/n_ambi live on r->p, not on r itself).
+std::string format_sam_extra_tags(const mm_reg1_t *r) {
+    if (!r->p) return "";
+    std::stringstream ss;
+    ss << "NM:i:" << (r->blen - r->mlen + (int)r->p->n_ambi) << "\t"
+       << "ms:i:" << r->p->dp_max0 << "\t"
+       << "AS:i:" << r->p->dp_score << "\t"
+       << "nn:i:" << (int)r->p->n_ambi;
+    return ss.str();
+}
+
 // Add this helper function near the top of the file
 std::string reverse_complement(const std::string& seq) {
     std::string rc(seq.length(), 'N');
@@ -317,10 +329,7 @@ std::vector<std::string> align_sequences_cpp(
                    << "*\t0\t0\t"
                    << output_seq << "\t"  // Use trimmed sequence
                    << output_qual << "\t"  // Use trimmed quality
-                   << "NM:i:" << r->blen - r->mlen << "\t"
-                   << "ms:i:" << r->score << "\t"
-                   << "AS:i:" << r->score << "\t"
-                   << "nn:i:" << r->mlen;
+                   << format_sam_extra_tags(r);
                 sam_lines.push_back(ss.str());
             }
         }
@@ -471,10 +480,7 @@ std::vector<std::string> aligner_map_cpp(
                    << "*\t0\t0\t"
                    << output_seq << "\t"
                    << output_qual << "\t"
-                   << "NM:i:" << r->blen - r->mlen << "\t"
-                   << "ms:i:" << r->score << "\t"
-                   << "AS:i:" << r->score << "\t"
-                   << "nn:i:" << r->mlen;
+                   << format_sam_extra_tags(r);
                 sam_lines.push_back(ss.str());
             }
         }
