@@ -7,7 +7,7 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
+  issues: write
 
 concurrency:
   group: sync-minimap2
@@ -92,7 +92,7 @@ jobs:
             --title "minimap2 ${tag}" \
             --notes "Vendored minimap2 source synced to upstream release [${tag}](https://github.com/lh3/minimap2/releases/tag/${tag})."
 
-  open-fix-pr:
+  open-fix-issue:
     needs: [check, verify]
     if: always() && needs.check.outputs.needs_sync == 'true' && needs.verify.result == 'failure'
     runs-on: ubuntu-latest
@@ -102,7 +102,7 @@ jobs:
       - name: Sync vendored minimap2 source
         run: .github/scripts/sync-minimap2.sh "${{ needs.check.outputs.latest_tag }}"
 
-      - name: Open PR for manual fix
+      - name: Push branch and open an issue for manual fix
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -116,8 +116,16 @@ jobs:
           git commit -m "Sync vendored minimap2 source to ${tag} (build failing, needs manual fix)"
           git push origin "$branch" --force
 
-          if ! gh pr view "$branch" >/dev/null 2>&1; then
-            gh pr create --title "minimap2 ${tag} sync: package fails to build" \
-              --body "Automatic sync to minimap2 ${tag} failed the build/smoke-test step (see the failed \`verify\` job on this workflow run for details). The upstream C API likely changed — update \`src/minimap2.cpp\` to match before merging." \
-              --base main --head "$branch"
+          # The default GITHUB_TOKEN isn't allowed to open PRs (that's an
+          # org/repo-level permission most repos leave off), so file an
+          # issue with a one-click compare link instead -- issue creation
+          # only needs the issues:write permission this job already has.
+          title="minimap2 ${tag} sync: package fails to build"
+          compare_url="https://github.com/${{ github.repository }}/compare/main...${branch}?expand=1"
+          existing=$(gh issue list --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty')
+          if [ -z "$existing" ]; then
+            gh issue create --title "$title" \
+              --body "Automatic sync to minimap2 ${tag} failed the build/smoke-test step (see the failed \`verify\` job on [this workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})). The upstream C API likely changed — update \`src/minimap2.cpp\` to match.
+
+The synced-but-broken source is on branch \`${branch}\`. Open a PR: ${compare_url}"
           fi
