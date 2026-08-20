@@ -122,10 +122,9 @@ jobs:
           # only needs the issues:write permission this job already has.
           title="minimap2 ${tag} sync: package fails to build"
           compare_url="https://github.com/${{ github.repository }}/compare/main...${branch}?expand=1"
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          body=$(printf 'Automatic sync to minimap2 %s failed the build/smoke-test step (see the failed `verify` job on [this workflow run](%s)). The upstream C API likely changed -- update `src/minimap2.cpp` to match.\n\nThe synced-but-broken source is on branch `%s`. Open a PR: %s\n' "$tag" "$run_url" "$branch" "$compare_url")
           existing=$(gh issue list --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty')
           if [ -z "$existing" ]; then
-            gh issue create --title "$title" \
-              --body "Automatic sync to minimap2 ${tag} failed the build/smoke-test step (see the failed \`verify\` job on [this workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})). The upstream C API likely changed — update \`src/minimap2.cpp\` to match.
-
-The synced-but-broken source is on branch \`${branch}\`. Open a PR: ${compare_url}"
+            gh issue create --title "$title" --body "$body"
           fi
