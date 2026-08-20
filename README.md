@@ -1,6 +1,8 @@
 # minimap2 R Package
 
-This is a NON-FUNCTIONAL EXPERIMENTAL PACKAGE created using AI to implement an R interface to minimap2.
+An R interface to [minimap2](https://github.com/lh3/minimap2), built with AI assistance. minimap2 is vendored
+and compiled as part of the package, and exposed through both a bundled CLI binary and an Rcpp-based API that
+builds an index once and reuses it in-process across multiple alignment calls.
 
 ## Vendored minimap2 source
 
@@ -60,10 +62,12 @@ aligner <- build_index(
     n_threads = 8
 )
 
+# The index stays loaded in memory, so aligner_map() can be called
+# repeatedly (e.g. across batches of reads) without rebuilding it.
 x <- aligner_map(
     aligner,
-    query_seq = reads_df$seq,
-    query_name = reads_df$name,
+    query_seqs = reads_df$seq,
+    query_names = reads_df$name,
     query_quals = reads_df$quals
 )
 
