@@ -6,31 +6,38 @@ PWD := $(shell pwd)
 
 .PHONY: all minimap2/libminimap2.a
 
+# libminimap2.a is linked into minimap2.so (via PKG_LIBS below), so its
+# objects must be position-independent even though upstream's own Makefile
+# doesn't build it that way. Pass -fPIC as a command-line override so it
+# always wins over upstream's own CFLAGS= assignment, regardless of what
+# that assignment happens to be after a sync to a new minimap2 release.
+MM2_CFLAGS = $(CFLAGS) -fPIC
+
 all: $(SHLIB) ../inst/bin/minimap2
 $(SHLIB): minimap2/libminimap2.a
 
 minimap2/libminimap2.a:
 ifeq ($(UNAME_M),arm64)
 	@echo "Building for ARM64"
-	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 libminimap2.a)
+	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 CFLAGS="$(MM2_CFLAGS)" libminimap2.a)
 else ifeq ($(UNAME_M),aarch64)
 	@echo "Building for ARM64"
-	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 libminimap2.a)
+	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 CFLAGS="$(MM2_CFLAGS)" libminimap2.a)
 else
 	@echo "Building for x86_64"
-	(cd minimap2 && $(MAKE) -f Makefile libminimap2.a)
+	(cd minimap2 && $(MAKE) -f Makefile CFLAGS="$(MM2_CFLAGS)" libminimap2.a)
 endif
 
 ../inst/bin/minimap2:
 ifeq ($(UNAME_M),arm64)
 	@echo "Building for ARM64"
-	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 minimap2)
+	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 CFLAGS="$(MM2_CFLAGS)" minimap2)
 else ifeq ($(UNAME_M),aarch64)
 	@echo "Building for ARM64"
-	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 minimap2)
+	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 CFLAGS="$(MM2_CFLAGS)" minimap2)
 else
 	@echo "Building for x86_64"
-	(cd minimap2 && $(MAKE) -f Makefile minimap2)
+	(cd minimap2 && $(MAKE) -f Makefile CFLAGS="$(MM2_CFLAGS)" minimap2)
 endif
 	echo "Installing binary to $(PWD)/../inst/bin"
 	mkdir -p ../inst/bin
