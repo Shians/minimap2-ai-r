@@ -60,7 +60,7 @@ setGeneric("n_mapped", function(x) standardGeneric("n_mapped"))
 #' @rdname n_mapped
 #' @export
 setMethod("n_mapped", "AlignmentRecords", function(x) {
-    sum(!(x@records$flag & 4))  # Count records where unmapped bit (4) is not set
+    sum(bitwAnd(x@records$flag, 4L) == 0)  # Count records where unmapped bit (4) is not set
 })
 
 #' Get number of unmapped records
@@ -73,7 +73,7 @@ setGeneric("n_unmapped", function(x) standardGeneric("n_unmapped"))
 #' @rdname n_unmapped
 #' @export
 setMethod("n_unmapped", "AlignmentRecords", function(x) {
-    sum(x@records$flag & 4)  # Count records where unmapped bit (4) is set
+    sum(bitwAnd(x@records$flag, 4L) != 0)  # Count records where unmapped bit (4) is set
 })
 
 #' Show method for AlignmentRecords
