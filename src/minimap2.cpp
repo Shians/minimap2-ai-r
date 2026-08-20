@@ -137,12 +137,12 @@ SEXP build_index_cpp(
     
     // Read the index
     mm_idx_t *mi = mm_idx_reader_read(reader, n_threads);
-    mm_mapopt_update(&map_opt, mi);
     mm_idx_reader_close(reader);
-    
+
     if (!mi) {
         stop("Failed to read index");
     }
+    mm_mapopt_update(&map_opt, mi);
 
       // Create external pointer with custom deleter
     XPtr<mm_idx_t> idx_ptr(mi, true);
@@ -214,13 +214,13 @@ std::vector<std::string> align_sequences_cpp(
     
     // Read the index
     mm_idx_t *mi = mm_idx_reader_read(reader, n_threads);
-    mm_mapopt_update(&map_opt, mi);
     if (!mi) {
         mm_idx_reader_close(reader);
         stop("Failed to read index");
     }
     mm_idx_reader_close(reader);
-    
+    mm_mapopt_update(&map_opt, mi);
+
     // Initialize thread buffer
     mm_tbuf_t *tbuf = mm_tbuf_init();
     if (!tbuf) {
