@@ -55,7 +55,7 @@ mm_reg1_t *mm_gen_regs(void *km, uint32_t hash, int qlen, int n_u, uint64_t *u, 
 	mm_reg1_t *r;
 	int i, k;
 
-	if (n_u == 0) return 0;
+	if (n_u <= 0) return 0;
 
 	// sort by score
 	z = (mm128_t*)kmalloc(km, n_u * 16);
@@ -256,19 +256,25 @@ void mm_select_sub(void *km, float pri_ratio, int min_diff, int best_n, int chec
 {
 	if (pri_ratio > 0.0f && *n_ > 0) {
 		int i, k, n = *n_, n_2nd = 0;
-		for (i = k = 0; i < n; ++i) {
+		uint8_t *keep = (uint8_t*)kmalloc(km, n);
+		for (i = 0; i < n; ++i) {
 			int p = r[i].parent;
+			keep[i] = 0;
 			if (p == i || r[i].inv) { // primary or inversion
-				r[k++] = r[i];
+				keep[i] = 1;
 			} else if ((r[i].score >= r[p].score * pri_ratio || r[i].score + min_diff >= r[p].score) && n_2nd < best_n) {
 				if (!(r[i].qs == r[p].qs && r[i].qe == r[p].qe && r[i].rid == r[p].rid && r[i].rs == r[p].rs && r[i].re == r[p].re)) // not identical hits
-					r[k++] = r[i], ++n_2nd;
-				else if (r[i].p) free(r[i].p);
+					keep[i] = 1, ++n_2nd;
 			} else if (check_strand && n_2nd < best_n && r[i].score > min_strand_sc && r[i].rev != r[p].rev) {
 				r[i].strand_retained = 1;
-				r[k++] = r[i], ++n_2nd;
-			} else if (r[i].p) free(r[i].p);
+				keep[i] = 1, ++n_2nd;
+			}
 		}
+		for (i = k = 0; i < n; ++i) {
+			if (keep[i]) r[k++] = r[i];
+			else if (r[i].p) free(r[i].p);
+		}
+		kfree(km, keep);
 		if (k != n) mm_sync_regs(km, k, r); // removing hits requires sync()
 		*n_ = k;
 	}
@@ -277,13 +283,18 @@ void mm_select_sub(void *km, float pri_ratio, int min_diff, int best_n, int chec
 int mm_filter_strand_retained(int n_regs, mm_reg1_t *r)
 {
 	int i, k;
-	for (i = k = 0; i < n_regs; ++i) {
+	uint8_t *keep = (uint8_t*)malloc(n_regs);
+	for (i = 0; i < n_regs; ++i) {
 		int p = r[i].parent;
-		if (!r[i].strand_retained || r[i].div < r[p].div * 5.0f || r[i].div < 0.01f) {
+		keep[i] = (!r[i].strand_retained || r[i].div < r[p].div * 5.0f || r[i].div < 0.01f);
+	}
+	for (i = k = 0; i < n_regs; ++i) {
+		if (keep[i]) {
 			if (k < i) r[k++] = r[i];
 			else ++k;
 		}
 	}
+	free(keep);
 	return k;
 }
 
@@ -418,16 +429,19 @@ static void mm_set_inv_mapq(void *km, int n_regs, mm_reg1_t *regs)
 	kfree(km, aux);
 }
 
-void mm_set_mapq(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int match_sc, int rep_len, int is_sr)
+void mm_set_mapq2(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int match_sc, int rep_len, int is_sr, int is_splice)
 {
 	static const float q_coef = 40.0f;
 	int64_t sum_sc = 0;
 	float uniq_ratio;
-	int i;
+	int i, n_2nd_splice = 0;
 	if (n_regs == 0) return;
-	for (i = 0; i < n_regs; ++i)
+	for (i = 0; i < n_regs; ++i) {
 		if (regs[i].parent == regs[i].id)
 			sum_sc += regs[i].score;
+		else if (regs[i].is_spliced)
+			++n_2nd_splice;
+	}
 	uniq_ratio = (float)sum_sc / (sum_sc + rep_len);
 	for (i = 0; i < n_regs; ++i) {
 		mm_reg1_t *r = &regs[i];
@@ -440,13 +454,18 @@ void mm_set_mapq(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int ma
 			pen_cm = pen_s1 < pen_cm? pen_s1 : pen_cm;
 			subsc = r->subsc > min_chain_sc? r->subsc : min_chain_sc;
 			if (r->p && r->p->dp_max2 > 0 && r->p->dp_max > 0) {
-				float identity = (float)r->mlen / r->blen;
-				float x = (float)r->p->dp_max2 * subsc / r->p->dp_max / r->score0;
+				float x, identity = (float)r->mlen / r->blen;
+				if (is_sr && is_splice)
+					x = (float)r->p->dp_max2 / r->p->dp_max; // ignore chaining score; for short RNA-seq reads, unspliced chaining score tends to be higher
+				else
+					x = (float)r->p->dp_max2 * subsc / r->p->dp_max / r->score0;
 				mapq = (int)(identity * pen_cm * q_coef * (1.0f - x * x) * logf((float)r->p->dp_max / match_sc));
 				if (!is_sr) {
 					int mapq_alt = (int)(6.02f * identity * identity * (r->p->dp_max - r->p->dp_max2) / match_sc + .499f); // BWA-MEM like mapQ, mostly for short reads
 					mapq = mapq < mapq_alt? mapq : mapq_alt; // in case the long-read heuristic fails
 				}
+				if (is_splice && is_sr && r->is_spliced && n_2nd_splice == 0)
+					mapq += 10;
 			} else {
 				float x = (float)subsc / r->score0;
 				if (r->p) {
