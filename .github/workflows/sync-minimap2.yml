@@ -2,10 +2,11 @@ name: Sync minimap2 release
 
 on:
   schedule:
-    - cron: '17 3 * * *' # daily
+    - cron: '17 3 * * 1' # weekly, Mondays
   workflow_dispatch: {}
 
 permissions:
+  actions: write
   contents: write
   issues: write
 
@@ -21,6 +22,14 @@ jobs:
       needs_sync: ${{ steps.check.outputs.needs_sync }}
     steps:
       - uses: actions/checkout@v4
+
+      # GitHub disables scheduled workflows after 60 days without repo
+      # activity, and this one only commits when upstream releases.
+      # Re-enabling it resets that inactivity timer.
+      - name: Keep scheduled workflow alive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/sync-minimap2.yml/enable"
 
       - name: Compare latest minimap2 release to vendored version
         id: check
