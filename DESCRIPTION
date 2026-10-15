@@ -12,3 +12,4 @@ LinkingTo: Rcpp
 Imports: Rcpp, stringr, tibble, methods
 Suggests: testthat (>= 3.0.0)
 Config/testthat/edition: 3
+SystemRequirements: GNU make, zlib

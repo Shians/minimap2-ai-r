@@ -1,47 +1,49 @@
 PKG_CPPFLAGS = -I./minimap2
-PKG_LIBS = ./minimap2/libminimap2.a
+# The static library must come before the system libraries it depends on.
+PKG_LIBS = ./minimap2/libminimap2.a -lz -lpthread -lm
 
 UNAME_M := $(shell uname -m)
-PWD := $(shell pwd)
 
-.PHONY: all minimap2/libminimap2.a
+# Upstream's Makefile selects NEON kernels via arm_neon/aarch64 and then
+# appends -D_FILE_OFFSET_BITS=64 -fsigned-char to CFLAGS. Because we pass
+# CFLAGS on the command line, upstream's own `CFLAGS+=` lines are ignored, so
+# those flags have to be supplied here as well.
+ifneq ($(filter arm64 aarch64,$(UNAME_M)),)
+MM2_ARCH_FLAGS = arm_neon=1 aarch64=1
+MM2_ARCH_CFLAGS = -D_FILE_OFFSET_BITS=64 -fsigned-char
+else
+MM2_ARCH_FLAGS =
+MM2_ARCH_CFLAGS =
+endif
 
-# libminimap2.a is linked into minimap2.so (via PKG_LIBS below), so its
+# libminimap2.a is linked into minimap2.so (via PKG_LIBS above), so its
 # objects must be position-independent even though upstream's own Makefile
 # doesn't build it that way. Pass -fPIC as a command-line override so it
 # always wins over upstream's own CFLAGS= assignment, regardless of what
 # that assignment happens to be after a sync to a new minimap2 release.
-MM2_CFLAGS = $(CFLAGS) -fPIC
+MM2_CFLAGS = $(CFLAGS) $(MM2_ARCH_CFLAGS) -fPIC
+
+# Build with R's configured C compiler and archiver rather than upstream's
+# defaults.
+MM2_MAKE = $(MAKE) -C minimap2 -f Makefile $(MM2_ARCH_FLAGS) \
+	CC="$(CC)" AR="$(AR)" CFLAGS="$(MM2_CFLAGS)"
+
+.PHONY: all clean minimap2/libminimap2.a
 
 all: $(SHLIB) ../inst/bin/minimap2
+
 $(SHLIB): minimap2/libminimap2.a
 
 minimap2/libminimap2.a:
-ifeq ($(UNAME_M),arm64)
-	@echo "Building for ARM64"
-	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 CFLAGS="$(MM2_CFLAGS)" libminimap2.a)
-else ifeq ($(UNAME_M),aarch64)
-	@echo "Building for ARM64"
-	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 CFLAGS="$(MM2_CFLAGS)" libminimap2.a)
-else
-	@echo "Building for x86_64"
-	(cd minimap2 && $(MAKE) -f Makefile CFLAGS="$(MM2_CFLAGS)" libminimap2.a)
-endif
+	$(MM2_MAKE) libminimap2.a
 
-../inst/bin/minimap2:
-ifeq ($(UNAME_M),arm64)
-	@echo "Building for ARM64"
-	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 CFLAGS="$(MM2_CFLAGS)" minimap2)
-else ifeq ($(UNAME_M),aarch64)
-	@echo "Building for ARM64"
-	(cd minimap2 && $(MAKE) -f Makefile arm_neon=1 aarch64=1 CFLAGS="$(MM2_CFLAGS)" minimap2)
-else
-	@echo "Building for x86_64"
-	(cd minimap2 && $(MAKE) -f Makefile CFLAGS="$(MM2_CFLAGS)" minimap2)
-endif
-	echo "Installing binary to $(PWD)/../inst/bin"
+# Depending on the library serialises the two recursive makes: under -jN they
+# would otherwise run concurrently in minimap2/ and compile the same objects.
+../inst/bin/minimap2: minimap2/libminimap2.a
+	$(MM2_MAKE) minimap2
 	mkdir -p ../inst/bin
 	cp minimap2/minimap2 ../inst/bin/
 
 clean:
-	(cd minimap2 && $(MAKE) clean)
+	$(MAKE) -C minimap2 -f Makefile clean
+	rm -f ../inst/bin/minimap2
