@@ -22,26 +22,20 @@ align_sequences(
 
 \item{query_quals}{Character vector of quality strings}
 
-\item{preset}{Preset parameters for different sequence types:
-\itemize{
-\item "map-pb": PacBio CLR genomic reads
-\item "map-ont": Oxford Nanopore reads
-\item "map-hifi": PacBio HiFi/CCS genomic reads
-\item "lr:hq": Nanopore Q20 genomic reads
-\item "sr": Short Illumina reads
-\item "splice": Long-read spliced alignment
-\item "splice:hq": High-quality long-read spliced alignment
-\item "asm5": Assembly to reference mapping (<5\% divergence)
-\item "asm10": Assembly to reference mapping (<10\% divergence)
-}}
+\item{preset}{Character string naming a minimap2 preset (the value of
+\code{minimap2 -x}), validated by minimap2 itself. Default is \code{"map-ont"}.
+See \code{\link[=build_index]{build_index()}} for common presets.}
 
-\item{n_threads}{Number of threads to use for alignment}
+\item{n_threads}{Number of threads used to build the index. Mapping is
+single-threaded.}
 }
 \value{
 An AlignmentRecords object containing the alignment results
 }
 \description{
-Align sequences using minimap2
+Builds an index of \code{reference_file} with \code{\link[=build_index]{build_index()}}, maps the queries
+with \code{\link[=aligner_map]{aligner_map()}}, and frees the index. To map several batches against
+one reference, build the index once and call \code{\link[=aligner_map]{aligner_map()}} directly.
 }
 \examples{
 \dontrun{

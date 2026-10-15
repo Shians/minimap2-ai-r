@@ -7,34 +7,44 @@
 build_index(reference_file, preset = "map-ont", n_threads = 3)
 }
 \arguments{
-\item{reference_file}{Path to the reference sequence file (FASTA format)}
+\item{reference_file}{Path to the reference sequence file (FASTA, optionally
+gzipped).}
 
-\item{preset}{Character string specifying the preset to use. Default is "map-ont".
-Available presets include:
+\item{preset}{Character string naming a minimap2 preset (the value of
+\code{minimap2 -x}). Default is \code{"map-ont"}. Any preset accepted by the
+vendored minimap2 is valid; common ones include:
 \itemize{
-\item "map-ont" - Oxford Nanopore read mapping
-\item "map-pb" - PacBio read mapping
-\item "map-hifi" - PacBio HiFi read mapping
-\item "sr" - Short-read mapping
-\item "asm5" - Long assembly to reference mapping (>95\% identity)
-\item "asm10" - Long assembly to reference mapping (>85\% identity)
-\item "splice" - Long-read spliced alignment
-}}
+\item \code{"map-ont"}: Oxford Nanopore genomic reads
+\item \code{"map-pb"}: PacBio CLR genomic reads
+\item \code{"map-hifi"}, \code{"lr:hq"}: PacBio HiFi and Nanopore Q20 genomic reads
+\item \code{"sr"}: short genomic reads
+\item \code{"splice"}, \code{"splice:hq"}: long-read spliced alignment
+\item \code{"asm5"}, \code{"asm10"}, \code{"asm20"}: assembly to reference mapping
+}
+See the minimap2 manual for the full list.}
 
-\item{n_threads}{Number of threads to use for index construction. Default is 3.}
+\item{n_threads}{Number of threads used to build the index. Default is 3.
+Mapping with \code{\link[=aligner_map]{aligner_map()}} is single-threaded regardless.}
 }
 \value{
-An external pointer to the minimap2 index
+A \code{minimap2_index} object: an external pointer to the index and its
+mapping options.
 }
 \description{
-Build a minimap2 index from a reference sequence
+Indexes a reference and records the preset's mapping options with it, so
+that \code{\link[=aligner_map]{aligner_map()}} maps with the same preset the index was built for.
+}
+\details{
+The index lives in C memory and cannot be saved: an index restored with
+\code{\link[=readRDS]{readRDS()}} or from a saved workspace is invalid, and \code{\link[=aligner_map]{aligner_map()}}
+signals an error for it. Rebuild the index in each session instead.
 }
 \examples{
 \dontrun{
 # Build index for Oxford Nanopore reads
 idx <- build_index("reference.fa", preset = "map-ont")
 
-# Build index for PacBio reads with 8 threads
-idx <- build_index("reference.fa", preset = "map-pb", n_threads = 8)
+# Build index for spliced alignment of long RNA reads with 8 threads
+idx <- build_index("reference.fa", preset = "splice", n_threads = 8)
 }
 }
