@@ -1,22 +1,18 @@
 #' Align sequences using minimap2
 #'
+#' Builds an index of `reference_file` with [build_index()], maps the queries
+#' with [aligner_map()], and frees the index. To map several batches against
+#' one reference, build the index once and call [aligner_map()] directly.
+#'
 #' @param reference_file Path to the reference sequence file (FASTA)
 #' @param query_seqs Character vector of query sequences
 #' @param query_names Character vector of query sequence names
 #' @param query_quals Character vector of quality strings
-#' @param preset Preset parameters for different sequence types:
-#'   \itemize{
-#'     \item "map-pb": PacBio CLR genomic reads
-#'     \item "map-ont": Oxford Nanopore reads
-#'     \item "map-hifi": PacBio HiFi/CCS genomic reads
-#'     \item "lr:hq": Nanopore Q20 genomic reads
-#'     \item "sr": Short Illumina reads
-#'     \item "splice": Long-read spliced alignment
-#'     \item "splice:hq": High-quality long-read spliced alignment
-#'     \item "asm5": Assembly to reference mapping (<5% divergence)
-#'     \item "asm10": Assembly to reference mapping (<10% divergence)
-#'   }
-#' @param n_threads Number of threads to use for alignment
+#' @param preset Character string naming a minimap2 preset (the value of
+#'   `minimap2 -x`), validated by minimap2 itself. Default is `"map-ont"`.
+#'   See [build_index()] for common presets.
+#' @param n_threads Number of threads used to build the index. Mapping is
+#'   single-threaded.
 #'
 #' @return An AlignmentRecords object containing the alignment results
 #'
@@ -66,34 +62,12 @@ align_sequences <- function(
              ") does not match number of sequences (", length(query_seqs), ")")
     }
     
-    # Check for valid preset
-    valid_presets <- c(
-        "map-pb", "map-ont", "map-hifi", "lr:hq", "sr",
-        "splice", "splice:hq", "asm5", "asm10"
-    )
-    if (!preset %in% valid_presets) {
-        stop("Invalid preset: ", preset, "\nValid presets are: ",
-             paste(valid_presets, collapse = ", "))
-    }
-    
-    # Check thread count
-    if (n_threads < 1) {
+    if (!is.numeric(n_threads) || length(n_threads) != 1 || n_threads < 1) {
         stop("Number of threads must be positive")
     }
-    
-    # Perform alignment
-    sam_lines <- align_sequences_cpp(
-        reference_file = reference_file,
-        query_seqs = query_seqs,
-        query_names = query_names,
-        query_quals = query_quals,
-        preset = preset,
-        n_threads = n_threads
-    )
-    
-    # Convert to AlignmentRecords object
-    records <- sam_to_records(sam_lines)
-    
-    # Return results
-    return(records)
-} 
+
+    idx <- build_index(reference_file, preset = preset, n_threads = n_threads)
+    on.exit(index_destroy_cpp(idx), add = TRUE)
+
+    aligner_map(idx, query_seqs, query_names = query_names, query_quals = query_quals)
+}

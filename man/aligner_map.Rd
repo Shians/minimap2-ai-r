@@ -7,17 +7,23 @@
 aligner_map(idx, query_seqs, query_names = NULL, query_quals = NULL)
 }
 \arguments{
-\item{idx}{An external pointer to a minimap2 index created by build_index()}
+\item{idx}{A \code{minimap2_index} object created by \code{\link[=build_index]{build_index()}}.}
 
-\item{query_seqs}{Character vector of query sequences}
+\item{query_seqs}{Character vector of query sequences.}
 
-\item{query_names}{Character vector of query names (optional)}
+\item{query_names}{Character vector of query names. Defaults to \code{"seq1"},
+\code{"seq2"}, and so on.}
 
-\item{query_quals}{Character vector of quality scores (optional)}
+\item{query_quals}{Character vector of Phred+33 quality strings, each the
+same length as its sequence. \code{"*"} or \code{""} marks a query without
+qualities, for which QUAL is written as \code{*}. Defaults to no qualities.}
 }
 \value{
-Character vector of SAM format alignment records
+An \link[=AlignmentRecords-class]{AlignmentRecords} object holding the
+SAM header and one record per alignment (unmapped queries get one record
+with flag 4).
 }
 \description{
-Map sequences using a pre-built minimap2 index
+Maps each query against \code{idx} with the preset the index was built with.
+Mapping runs on a single thread.
 }

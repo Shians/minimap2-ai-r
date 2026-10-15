@@ -23,22 +23,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// align_sequences_cpp
-std::vector<std::string> align_sequences_cpp(const std::string& reference_file, const std::vector<std::string>& query_seqs, const std::vector<std::string>& query_names, const std::vector<std::string>& query_quals, const std::string& preset, int n_threads);
-RcppExport SEXP _minimap2_align_sequences_cpp(SEXP reference_fileSEXP, SEXP query_seqsSEXP, SEXP query_namesSEXP, SEXP query_qualsSEXP, SEXP presetSEXP, SEXP n_threadsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const std::string& >::type reference_file(reference_fileSEXP);
-    Rcpp::traits::input_parameter< const std::vector<std::string>& >::type query_seqs(query_seqsSEXP);
-    Rcpp::traits::input_parameter< const std::vector<std::string>& >::type query_names(query_namesSEXP);
-    Rcpp::traits::input_parameter< const std::vector<std::string>& >::type query_quals(query_qualsSEXP);
-    Rcpp::traits::input_parameter< const std::string& >::type preset(presetSEXP);
-    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(align_sequences_cpp(reference_file, query_seqs, query_names, query_quals, preset, n_threads));
-    return rcpp_result_gen;
-END_RCPP
-}
 // aligner_map_cpp
 std::vector<std::string> aligner_map_cpp(SEXP mi_ptr, const std::vector<std::string>& query_seqs, const std::vector<std::string>& query_names, const std::vector<std::string>& query_quals);
 RcppExport SEXP _minimap2_aligner_map_cpp(SEXP mi_ptrSEXP, SEXP query_seqsSEXP, SEXP query_namesSEXP, SEXP query_qualsSEXP) {
@@ -50,6 +34,27 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const std::vector<std::string>& >::type query_names(query_namesSEXP);
     Rcpp::traits::input_parameter< const std::vector<std::string>& >::type query_quals(query_qualsSEXP);
     rcpp_result_gen = Rcpp::wrap(aligner_map_cpp(mi_ptr, query_seqs, query_names, query_quals));
+    return rcpp_result_gen;
+END_RCPP
+}
+// index_destroy_cpp
+void index_destroy_cpp(SEXP mi_ptr);
+RcppExport SEXP _minimap2_index_destroy_cpp(SEXP mi_ptrSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type mi_ptr(mi_ptrSEXP);
+    index_destroy_cpp(mi_ptr);
+    return R_NilValue;
+END_RCPP
+}
+// index_info_cpp
+List index_info_cpp(SEXP mi_ptr);
+RcppExport SEXP _minimap2_index_info_cpp(SEXP mi_ptrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type mi_ptr(mi_ptrSEXP);
+    rcpp_result_gen = Rcpp::wrap(index_info_cpp(mi_ptr));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -67,8 +72,9 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_minimap2_build_index_cpp", (DL_FUNC) &_minimap2_build_index_cpp, 3},
-    {"_minimap2_align_sequences_cpp", (DL_FUNC) &_minimap2_align_sequences_cpp, 6},
     {"_minimap2_aligner_map_cpp", (DL_FUNC) &_minimap2_aligner_map_cpp, 4},
+    {"_minimap2_index_destroy_cpp", (DL_FUNC) &_minimap2_index_destroy_cpp, 1},
+    {"_minimap2_index_info_cpp", (DL_FUNC) &_minimap2_index_info_cpp, 1},
     {"_minimap2_calculate_effective_seq_size_cpp", (DL_FUNC) &_minimap2_calculate_effective_seq_size_cpp, 1},
     {NULL, NULL, 0}
 };

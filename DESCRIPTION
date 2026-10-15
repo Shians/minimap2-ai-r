@@ -10,3 +10,5 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 LinkingTo: Rcpp
 Imports: Rcpp, stringr, tibble, methods
+Suggests: testthat (>= 3.0.0)
+Config/testthat/edition: 3

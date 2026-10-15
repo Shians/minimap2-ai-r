@@ -5,12 +5,16 @@ build_index_cpp <- function(reference_file, preset, n_threads) {
     .Call(`_minimap2_build_index_cpp`, reference_file, preset, n_threads)
 }
 
-align_sequences_cpp <- function(reference_file, query_seqs, query_names, query_quals, preset = "map-ont", n_threads = 3L) {
-    .Call(`_minimap2_align_sequences_cpp`, reference_file, query_seqs, query_names, query_quals, preset, n_threads)
-}
-
 aligner_map_cpp <- function(mi_ptr, query_seqs, query_names, query_quals) {
     .Call(`_minimap2_aligner_map_cpp`, mi_ptr, query_seqs, query_names, query_quals)
+}
+
+index_destroy_cpp <- function(mi_ptr) {
+    invisible(.Call(`_minimap2_index_destroy_cpp`, mi_ptr))
+}
+
+index_info_cpp <- function(mi_ptr) {
+    .Call(`_minimap2_index_info_cpp`, mi_ptr)
 }
 
 calculate_effective_seq_size_cpp <- function(cigar) {

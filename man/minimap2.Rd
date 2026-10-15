@@ -9,7 +9,12 @@
 R interface to Minimap2, a versatile sequence alignment program that can be used for short-read alignment, long-read alignment, and short-read assembly-to-reference alignment.
 }
 \author{
-\strong{Maintainer}: Your Name \email{your.email@example.com}
+\strong{Maintainer}: Shian Su \email{su.s@wehi.edu.au}
+
+Authors:
+\itemize{
+  \item Shian Su \email{su.s@wehi.edu.au}
+}
 
 }
 \keyword{internal}
